@@ -1,0 +1,48 @@
+name: 手动部署前端文件
+
+on:
+  workflow_dispatch:
+    inputs:
+      download_url:
+        description: '请输入前端压缩包的下载直链 (例如 .zip 或 .tar.gz)'
+        required: true
+        default: ''
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库代码
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 清理当前目录旧文件
+        # 保留 .github 文件夹和 .gitignore，删除其他所有内容以准备解压
+        run: |
+          find . -maxdepth 1 ! -name '.github' ! -name '.git' ! -name '.gitignore' ! -name '.' -exec rm -rf {} +
+
+      - name: 下载并解压文件
+        run: |
+          curl -L -o web_vault.zip "${{ github.event.inputs.download_url }}"
+          # 根据文件后缀判断解压方式
+          if [[ "${{ github.event.inputs.download_url }}" == *.tar.gz ]]; then
+            tar -xzf web_vault.zip
+          else
+            unzip -o web_vault.zip
+          fi
+          # 删除下载的压缩包
+          rm web_vault.zip
+
+      - name: 提交并推送到仓库
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          # 检查是否有内容变更，避免空提交报错
+          if git diff --staged --quiet; then
+            echo "没有内容变更，跳过提交。"
+          else
+            git commit -m "chore: 手动部署来自 ${{ github.event.inputs.download_url }} 的前端文件"
+            git push
+          fi
