@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://bit.echs.top/api/:path*" },
+    { "source": "/identity/:path*", "destination": "https://bit.echs.top/identity/:path*" },
+    { "source": "/icons/:path*", "destination": "https://bit.echs.top/icons/:path*" },
+    { "source": "/notifications/:path*", "destination": "https://bit.echs.top/notifications/:path*" },
+    { "source": "/attachments/:path*", "destination": "https://bit.echs.top/attachments/:path*" },
+    { "source": "/((?!api|identity|icons|notifications|attachments).*)", "destination": "/index.html" }
+  ]
+}
