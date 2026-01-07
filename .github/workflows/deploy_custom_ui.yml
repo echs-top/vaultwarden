@@ -1,12 +1,16 @@
-name: 手动部署前端文件
+name: 部署 Vaultwarden 前端 (自动配置版)
 
 on:
   workflow_dispatch:
     inputs:
       download_url:
-        description: '请输入前端压缩包的下载直链 (例如 .zip 或 .tar.gz)'
+        description: '请输入前端压缩包直链 (zip/tar.gz)'
         required: true
-        default: ''
+        default: 'https://github.com/echs-top/bw_web_builds/releases/download/v2025.12.1/bw_web_builds-v2025.12.1.zip'
+      vault_domain:
+        description: '你的 Vaultwarden 后端域名 (必须包含 https://)'
+        required: true
+        default: 'https://vault.example.com'
 
 jobs:
   deploy:
@@ -17,32 +21,68 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 清理当前目录旧文件
-        # 保留 .github 文件夹和 .gitignore，删除其他所有内容以准备解压
+      - name: 清理当前目录
         run: |
+          # 保留 Action 自身和 Git 配置，删除其余所有内容
           find . -maxdepth 1 ! -name '.github' ! -name '.git' ! -name '.gitignore' ! -name '.' -exec rm -rf {} +
 
-      - name: 下载并解压文件
+      - name: 下载并解压
         run: |
-          curl -L -o web_vault.zip "${{ github.event.inputs.download_url }}"
-          # 根据文件后缀判断解压方式
+          curl -L -o web_vault.tmp "${{ github.event.inputs.download_url }}"
+          
           if [[ "${{ github.event.inputs.download_url }}" == *.tar.gz ]]; then
-            tar -xzf web_vault.zip
+            tar -xzf web_vault.tmp
           else
-            unzip -o web_vault.zip
+            unzip -o web_vault.tmp
           fi
-          # 删除下载的压缩包
-          rm web_vault.zip
+          rm web_vault.tmp
 
-      - name: 提交并推送到仓库
+      - name: 智能移动内容至根目录
+        run: |
+          # 自动寻找解压出来的文件夹（避开系统目录）
+          SUBDIR=$(find . -maxdepth 1 -type d ! -name "." ! -name ".git" ! -name ".github" -print -quit)
+          
+          if [ -n "$SUBDIR" ]; then
+            echo "检测到子文件夹: $SUBDIR，正在同步内容..."
+            shopt -s dotglob
+            mv "$SUBDIR"/* .
+            rmdir "$SUBDIR"
+            shopt -u dotglob
+          fi
+
+      - name: 清理大体积 Map 文件
+        run: |
+          # 删除 .map 文件以加速 Vercel 部署并保护源码逻辑
+          find . -name "*.map" -type f -delete
+
+      - name: 自动生成 vercel.json
+        run: |
+          # 获取输入的域名，并确保末尾没有斜杠
+          DOMAIN=$(echo "${{ github.event.inputs.vault_domain }}" | sed 's:/*$::')
+          
+          cat <<EOF > vercel.json
+          {
+            "version": 2,
+            "rewrites": [
+              { "source": "/api/:path*", "destination": "$DOMAIN/api/:path*" },
+              { "source": "/identity/:path*", "destination": "$DOMAIN/identity/:path*" },
+              { "source": "/icons/:path*", "destination": "$DOMAIN/icons/:path*" },
+              { "source": "/notifications/:path*", "destination": "$DOMAIN/notifications/:path*" },
+              { "source": "/attachments/:path*", "destination": "$DOMAIN/attachments/:path*" },
+              { "source": "/((?!api|identity|icons|notifications|attachments).*)", "destination": "/index.html" }
+            ]
+          }
+          EOF
+          echo "vercel.json 已生成，指向后端: $DOMAIN"
+
+      - name: 提交并推送
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add .
-          # 检查是否有内容变更，避免空提交报错
           if git diff --staged --quiet; then
             echo "没有内容变更，跳过提交。"
           else
-            git commit -m "chore: 手动部署来自 ${{ github.event.inputs.download_url }} 的前端文件"
+            git commit -m "chore: 部署前端版本至最新 (自动连接到 ${{ github.event.inputs.vault_domain }})"
             git push
           fi
