@@ -52,14 +52,15 @@ jobs:
 
       - name: 清理大体积 Map 文件
         run: |
-          # 删除 .map 文件以加速 Vercel 部署并保护源码逻辑
+          # 删除 .map 文件以加速部署并保护源码逻辑
           find . -name "*.map" -type f -delete
 
-      - name: 自动生成 vercel.json
+      - name: 自动生成配置文件 (Vercel & Netlify)
         run: |
           # 获取输入的域名，并确保末尾没有斜杠
           DOMAIN=$(echo "${{ github.event.inputs.vault_domain }}" | sed 's:/*$::')
           
+          # 生成 vercel.json
           cat <<EOF > vercel.json
           {
             "version": 2,
@@ -73,7 +74,46 @@ jobs:
             ]
           }
           EOF
-          echo "vercel.json 已生成，指向后端: $DOMAIN"
+
+          # 生成 netlify.toml
+          cat <<EOF > netlify.toml
+          [[redirects]]
+            from = "/api/*"
+            to = "$DOMAIN/api/:splat"
+            status = 200
+            force = true
+
+          [[redirects]]
+            from = "/identity/*"
+            to = "$DOMAIN/identity/:splat"
+            status = 200
+            force = true
+
+          [[redirects]]
+            from = "/icons/*"
+            to = "$DOMAIN/icons/:splat"
+            status = 200
+            force = true
+
+          [[redirects]]
+            from = "/notifications/*"
+            to = "$DOMAIN/notifications/:splat"
+            status = 200
+            force = true
+
+          [[redirects]]
+            from = "/attachments/*"
+            to = "$DOMAIN/attachments/:splat"
+            status = 200
+            force = true
+
+          [[redirects]]
+            from = "/*"
+            to = "/index.html"
+            status = 200
+          EOF
+          
+          echo "配置文件已生成，后端指向: $DOMAIN"
 
       - name: 提交并推送
         run: |
@@ -83,6 +123,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "没有内容变更，跳过提交。"
           else
-            git commit -m "chore: 部署前端版本至最新 (自动连接到 ${{ github.event.inputs.vault_domain }})"
+            git commit -m "chore: 自动配置前端并同步至最新 (Backend: ${{ github.event.inputs.vault_domain }})"
             git push
           fi
