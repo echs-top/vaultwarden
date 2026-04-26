@@ -6,7 +6,7 @@ on:
       download_url:
         description: '请输入前端压缩包直链 (zip/tar.gz)'
         required: true
-        default: 'https://github.com/echs-top/bw_web_builds/releases/download/v2025.12.1/bw_web_builds-v2025.12.1.zip'
+        default: 'https://github.com/dani-garcia/bw_web_builds/releases/download/v2026.3.1/bw_web_v2026.3.1.tar.gz'
       vault_domain:
         description: '你的 Vaultwarden 后端域名 (必须包含 https://)'
         required: true
