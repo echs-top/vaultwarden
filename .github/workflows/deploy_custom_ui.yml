@@ -1,4 +1,4 @@
-name: 部署 Vaultwarden 前端 (自动配置版)
+name: 部署 Vaultwarden 前端
 
 on:
   workflow_dispatch:
