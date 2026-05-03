@@ -1,30 +1,30 @@
 [[redirects]]
   from = "/api/*"
-  to = "https://bit.echs.top/api/:splat"
+  to = "https://vault.echs.top/api/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/identity/*"
-  to = "https://bit.echs.top/identity/:splat"
+  to = "https://vault.echs.top/identity/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/icons/*"
-  to = "https://bit.echs.top/icons/:splat"
+  to = "https://vault.echs.top/icons/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/notifications/*"
-  to = "https://bit.echs.top/notifications/:splat"
+  to = "https://vault.echs.top/notifications/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/attachments/*"
-  to = "https://bit.echs.top/attachments/:splat"
+  to = "https://vault.echs.top/attachments/:splat"
   status = 200
   force = true
 
