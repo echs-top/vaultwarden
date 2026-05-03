@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       download_url:
-        description: '请输入前端压缩包直链 (zip/tar.gz)'
+        description: '请输入 Vaultwarden 提取版压缩包直链 (包含 web-vault 目录)'
         required: true
-        default: 'https://github.com/dani-garcia/bw_web_builds/releases/download/v2026.3.1/bw_web_v2026.3.1.tar.gz'
+        default: 'https://github.com/czyt/vaultwarden-binary/releases/download/1.35.8-extracted/vaultwarden-linux-amd64-extracted.zip'
       vault_domain:
         description: '你的 Vaultwarden 后端域名 (必须包含 https://)'
         required: true
@@ -26,29 +26,37 @@ jobs:
           # 保留 Action 自身和 Git 配置，删除其余所有内容
           find . -maxdepth 1 ! -name '.github' ! -name '.git' ! -name '.gitignore' ! -name '.' -exec rm -rf {} +
 
-      - name: 下载并解压
+      - name: 下载并解压到临时目录
         run: |
-          curl -L -o web_vault.tmp "${{ github.event.inputs.download_url }}"
+          curl -L -o release.tmp "${{ github.event.inputs.download_url }}"
+          
+          # 创建临时目录统一解压，避免污染根目录并方便查找
+          mkdir -p extract_tmp
           
           if [[ "${{ github.event.inputs.download_url }}" == *.tar.gz ]]; then
-            tar -xzf web_vault.tmp
+            tar -xzf release.tmp -C extract_tmp
           else
-            unzip -o web_vault.tmp
+            unzip -q -o release.tmp -d extract_tmp
           fi
-          rm web_vault.tmp
+          rm release.tmp
 
-      - name: 智能移动内容至根目录
+      - name: 提取 web-vault 内容至根目录
         run: |
-          # 自动寻找解压出来的文件夹（避开系统目录）
-          SUBDIR=$(find . -maxdepth 1 -type d ! -name "." ! -name ".git" ! -name ".github" -print -quit)
+          # 自动寻找解压出来的 web-vault 文件夹
+          WEB_VAULT_DIR=$(find extract_tmp -type d -name "web-vault" -print -quit)
           
-          if [ -n "$SUBDIR" ]; then
-            echo "检测到子文件夹: $SUBDIR，正在同步内容..."
+          if [ -n "$WEB_VAULT_DIR" ]; then
+            echo "检测到 web-vault 目录: $WEB_VAULT_DIR，正在同步内容..."
             shopt -s dotglob
-            mv "$SUBDIR"/* .
-            rmdir "$SUBDIR"
+            mv "$WEB_VAULT_DIR"/* .
             shopt -u dotglob
+          else
+            echo "错误: 未在压缩包中找到 web-vault 目录！请检查链接内容。"
+            exit 1
           fi
+          
+          # 清除残留的临时解压文件夹（包含不需要的后端二进制文件等）
+          rm -rf extract_tmp
 
       - name: 清理大体积 Map 文件
         run: |
